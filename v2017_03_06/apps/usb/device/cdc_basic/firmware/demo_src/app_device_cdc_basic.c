@@ -30,7 +30,8 @@ please contact mla_licensing@microchip.com
 #include "app_device_cdc_basic.h"
 #include "usb_config.h"
 
-
+uint8_t storeBuffer[64];
+int storeBufferPos = 0;
 /*********************************************************************
 * Function: void APP_DeviceCDCBasicDemoInitialize(void);
 *
@@ -93,20 +94,44 @@ void APP_DeviceCDCBasicDemoTasks()
         uint8_t writeBuffer[CDC_DATA_IN_EP_SIZE];
         uint8_t numBytesRead;
 
+        // 読み込み！
         numBytesRead = getsUSBUSART(readBuffer, sizeof(readBuffer));
-        if (numBytesRead > 0) {
-            // データ受信時のみ処理
-            int bufSize = 4;
-            for (int i =0 ;i<bufSize; i++) {
-                writeBuffer[i] = "hoge"[i];
-            }
-            if(bufSize > 0)
-            {
-                // ライトバッファの内容をかくよ！　
-                /* After processing all of the received data, we need to send out
-                 * the "echo" data now.
-                 */
-                putUSBUSART(writeBuffer, bufSize);
+        for (int i =0 ;i<numBytesRead; i++) {
+            // 一文字読み込み
+            uint8_t c = readBuffer[i];
+            switch(c) {
+                // 改行コードで書き込みバッファに出力
+                case 0x0A:
+                case 0x0D:
+                    putUSBUSART(storeBuffer, storeBufferPos);
+                    storeBufferPos = 0;
+                    break;
+                // それ以外の文字は内部にためる
+                default:
+                    // ためる
+                    storeBuffer[i + storeBufferPos] = readBuffer[i];
+                    storeBufferPos += i;
+                    // ログ出力
+//                    char log[64];
+//                    char logheader = "im Bufferering : ";
+//                    int catPos = 0;
+//                    memcpy(log + catPos, logheader, strlen(logheader));
+//                    catPos += strlen(logheader);
+//                    memcpy(log + catPos, readBuffer[i], 1);
+//                    
+//                    catPos += 1;
+                    
+                    char t[32];
+                    int pos; pos = 0;
+                    char* buf; int append;
+                    buf = "moge"; append = strlen(buf);
+                    memcpy(t + pos, buf, append);
+                    pos += append;
+                    buf = "mige"; append = strlen(buf);
+                    memcpy(t + pos, buf, append);
+                    pos += append;
+                    putUSBUSART(t, pos);
+                    break;
             }
         }
     }
