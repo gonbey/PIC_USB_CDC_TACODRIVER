@@ -23,25 +23,13 @@ please contact mla_licensing@microchip.com
 #include <stdint.h>
 #include <string.h>
 #include <stddef.h>
-#include <stdlib.h>
 
 #include "usb.h"
-#include "meter.h"
 
 #include "app_led_usb_status.h"
 #include "app_device_cdc_basic.h"
 #include "usb_config.h"
 
-#define MAX_LEN 4
-/** VARIABLES ******************************************************/
-
-static bool buttonPressed;
-static char buttonMessage[] = "Button pressed.\r\n";
-static uint8_t readBuffer[CDC_DATA_OUT_EP_SIZE] = {};
-static uint8_t writeBuffer[CDC_DATA_IN_EP_SIZE] = {};
-
-static uint8_t rowbuf[MAX_LEN] = {};
-static uint8_t rowBufPos = 0;
 
 /*********************************************************************
 * Function: void APP_DeviceCDCBasicDemoInitialize(void);
@@ -61,8 +49,6 @@ void APP_DeviceCDCBasicDemoInitialize()
     line_coding.bDataBits = 8;
     line_coding.bParityType = 0;
     line_coding.dwDTERate = 9600;
-
-    buttonPressed = false;
 }
 
 /*********************************************************************
@@ -98,93 +84,31 @@ void APP_DeviceCDCBasicDemoTasks()
         return;
     }
         
-    /* If the user has pressed the button associated with this demo, then we
-     * are going to send a "Button Pressed" message to the terminal.
-     */
-    if(BUTTON_IsPressed(BUTTON_DEVICE_CDC_BASIC_DEMO) == true)
-    {
-        /* Make sure that we only send the message once per button press and
-         * not continuously as the button is held.
-         */
-        if(buttonPressed == false)
-        {
-            /* Make sure that the CDC driver is ready for a transmission.
-             */
-            if(mUSBUSARTIsTxTrfReady() == true)
-            {
-                putrsUSBUSART(buttonMessage);
-                buttonPressed = true;
-            }
-        }
-    }
-    else
-    {
-        /* If the button is released, we can then allow a new message to be
-         * sent the next time the button is pressed.
-         */
-        buttonPressed = false;
-    }
-
     /* Check to see if there is a transmission in progress, if there isn't, then
      * we can see about performing an echo response to data received.
      */
-    if( USBUSARTIsTxTrfReady() == true)
-    {
-        uint8_t i;
+    if( USBUSARTIsTxTrfReady() == 1) {
+
+        uint8_t readBuffer[CDC_DATA_OUT_EP_SIZE];
+        uint8_t writeBuffer[CDC_DATA_IN_EP_SIZE];
         uint8_t numBytesRead;
-        int8_t hz;
-        char itoabuf[10];
-        
-        memset(readBuffer, '\0', sizeof(readBuffer));
+
         numBytesRead = getsUSBUSART(readBuffer, sizeof(readBuffer));
-
-        /* For every byte that was read... */
-        // バイトごとに読み込んでくよ！
-        for(i=0; i<numBytesRead; i++)
-        {
-            switch(readBuffer[i])
+        if (numBytesRead > 0) {
+            // データ受信時のみ処理
+            int bufSize = 4;
+            for (int i =0 ;i<bufSize; i++) {
+                writeBuffer[i] = "hoge"[i];
+            }
+            if(bufSize > 0)
             {
-                /* If we receive new line or line feed commands, just echo
-                 * them direct.
+                // ライトバッファの内容をかくよ！　
+                /* After processing all of the received data, we need to send out
+                 * the "echo" data now.
                  */
-                /** 改行コードが来たらその値をもとに何か行うよ*/
-                case 0x0A:
-                case 0x0D:
-                    // メーターのパルス周波数設定
-                    hz = atoi(rowbuf);
-                    memset(rowbuf, '\0', sizeof(rowbuf));
-                    memset(itoabuf, '\0', sizeof(itoabuf));
-                    itoa(itoabuf, hz, 10);
-                    memset(writeBuffer, '\0', sizeof(writeBuffer));
-                    // strcat(writeBuffer, itoabuf);
-                    strcat(writeBuffer, "moge");
-                    meter_set_freq(hz);
-                    rowBufPos = 0;
-                    break;
-
-                /** それ以外の何かを受信したら+1した値を戻すよ*/
-                /* If we receive something else, then echo it plus one
-                 * so that if we receive 'a', we echo 'b' so that the
-                 * user knows that it isn't the echo enabled on their
-                 * terminal program.
-                 */
-                default:
-                    rowbuf[rowBufPos + i] = readBuffer[i];
-                    rowBufPos++;
-                    break;
+                putUSBUSART(writeBuffer, bufSize);
             }
         }
-
-        if(strlen(writeBuffer) > 0)
-        {
-            // ライトバッファの内容をかくよ！　
-            /* After processing all of the received data, we need to send out
-             * the "echo" data now.
-             */
-            putUSBUSART(writeBuffer, strlen(writeBuffer));
-            memset(writeBuffer, '\0', sizeof(writeBuffer));
-        }
     }
-
     CDCTxService();
 }
