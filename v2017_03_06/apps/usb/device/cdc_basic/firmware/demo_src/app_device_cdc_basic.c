@@ -23,19 +23,25 @@ please contact mla_licensing@microchip.com
 #include <stdint.h>
 #include <string.h>
 #include <stddef.h>
+#include <stdlib.h>
 
 #include "usb.h"
+#include "meter.h"
 
 #include "app_led_usb_status.h"
 #include "app_device_cdc_basic.h"
 #include "usb_config.h"
 
+#define MAX_LEN 4
 /** VARIABLES ******************************************************/
 
 static bool buttonPressed;
 static char buttonMessage[] = "Button pressed.\r\n";
-static uint8_t readBuffer[CDC_DATA_OUT_EP_SIZE];
-static uint8_t writeBuffer[CDC_DATA_IN_EP_SIZE];
+static uint8_t readBuffer[CDC_DATA_OUT_EP_SIZE] = {};
+static uint8_t writeBuffer[CDC_DATA_IN_EP_SIZE] = {};
+
+static uint8_t rowbuf[MAX_LEN] = {};
+static uint8_t rowBufPos = 0;
 
 /*********************************************************************
 * Function: void APP_DeviceCDCBasicDemoInitialize(void);
@@ -126,7 +132,10 @@ void APP_DeviceCDCBasicDemoTasks()
     {
         uint8_t i;
         uint8_t numBytesRead;
-
+        int8_t hz;
+        char itoabuf[10];
+        
+        memset(readBuffer, '\0', sizeof(readBuffer));
         numBytesRead = getsUSBUSART(readBuffer, sizeof(readBuffer));
 
         /* For every byte that was read... */
@@ -138,10 +147,19 @@ void APP_DeviceCDCBasicDemoTasks()
                 /* If we receive new line or line feed commands, just echo
                  * them direct.
                  */
-                /** 改行コードは直接そのまま返すよ*/
+                /** 改行コードが来たらその値をもとに何か行うよ*/
                 case 0x0A:
                 case 0x0D:
-                    writeBuffer[i] = readBuffer[i];
+                    // メーターのパルス周波数設定
+                    hz = atoi(rowbuf);
+                    memset(rowbuf, '\0', sizeof(rowbuf));
+                    memset(itoabuf, '\0', sizeof(itoabuf));
+                    itoa(itoabuf, hz, 10);
+                    memset(writeBuffer, '\0', sizeof(writeBuffer));
+                    // strcat(writeBuffer, itoabuf);
+                    strcat(writeBuffer, "moge");
+                    meter_set_freq(hz);
+                    rowBufPos = 0;
                     break;
 
                 /** それ以外の何かを受信したら+1した値を戻すよ*/
@@ -151,18 +169,20 @@ void APP_DeviceCDCBasicDemoTasks()
                  * terminal program.
                  */
                 default:
-                    writeBuffer[i] = readBuffer[i] + 1;
+                    rowbuf[rowBufPos + i] = readBuffer[i];
+                    rowBufPos++;
                     break;
             }
         }
 
-        if(numBytesRead > 0)
+        if(strlen(writeBuffer) > 0)
         {
             // ライトバッファの内容をかくよ！　
             /* After processing all of the received data, we need to send out
              * the "echo" data now.
              */
-            putUSBUSART(writeBuffer,numBytesRead);
+            putUSBUSART(writeBuffer, strlen(writeBuffer));
+            memset(writeBuffer, '\0', sizeof(writeBuffer));
         }
     }
 
