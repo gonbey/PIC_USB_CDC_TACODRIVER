@@ -29,6 +29,7 @@ please contact mla_licensing@microchip.com
 #include "app_led_usb_status.h"
 #include "app_device_cdc_basic.h"
 #include "usb_config.h"
+#include "my_util.h"
 
 uint8_t storeBuffer[64];
 int storeBufferPos = 0;
@@ -66,74 +67,29 @@ void APP_DeviceCDCBasicDemoInitialize()
 * Output: None
 *
 ********************************************************************/
+#define BUF_SIZE 64
 void APP_DeviceCDCBasicDemoTasks()
 {
-    /* If the USB device isn't configured yet, we can't really do anything
-     * else since we don't have a host to talk to.  So jump back to the
-     * top of the while loop. */
-    if( USBGetDeviceState() < CONFIGURED_STATE )
-    {
-        return;
+    
+    char readBuf[BUF_SIZE];
+    int numBytes = readData(readBuf);
+    
+    static char writeBuf[BUF_SIZE];
+    static int writeBufPos;
+    for (int i=0; i< numBytes; i++) {
+        char c = readBuf[i];
+        switch(c) {
+            case 0x0A:
+            case 0x0D:
+                writeData(writeBuf, writeBufPos);
+                writeBufPos = 0;
+                goto outer;
+            default:
+                writeBuf[writeBufPos++] = readBuf[i];
+                break;
+        }        
     }
-
-    /* If we are currently suspended, then we need to see if we need to
-     * issue a remote wakeup.  In either case, we shouldn't process any
-     * keyboard commands since we aren't currently communicating to the host
-     * thus just continue back to the start of the while loop. */
-    if( USBIsDeviceSuspended()== true )
-    {
-        return;
-    }
-        
-    /* Check to see if there is a transmission in progress, if there isn't, then
-     * we can see about performing an echo response to data received.
-     */
-    if( USBUSARTIsTxTrfReady() == 1) {
-
-        uint8_t readBuffer[CDC_DATA_OUT_EP_SIZE];
-        uint8_t writeBuffer[CDC_DATA_IN_EP_SIZE];
-        uint8_t numBytesRead;
-
-        // 読み込み！
-        numBytesRead = getsUSBUSART(readBuffer, sizeof(readBuffer));
-        for (int i =0 ;i<numBytesRead; i++) {
-            // 一文字読み込み
-            uint8_t c = readBuffer[i];
-            switch(c) {
-                // 改行コードで書き込みバッファに出力
-                case 0x0A:
-                case 0x0D:
-                    putUSBUSART(storeBuffer, storeBufferPos);
-                    storeBufferPos = 0;
-                    break;
-                // それ以外の文字は内部にためる
-                default:
-                    // ためる
-                    storeBuffer[i + storeBufferPos] = readBuffer[i];
-                    storeBufferPos += i;
-                    // ログ出力
-//                    char log[64];
-//                    char logheader = "im Bufferering : ";
-//                    int catPos = 0;
-//                    memcpy(log + catPos, logheader, strlen(logheader));
-//                    catPos += strlen(logheader);
-//                    memcpy(log + catPos, readBuffer[i], 1);
-//                    
-//                    catPos += 1;
-                    
-                    char t[32];
-                    int pos; pos = 0;
-                    char* buf; int append;
-                    buf = "moge"; append = strlen(buf);
-                    memcpy(t + pos, buf, append);
-                    pos += append;
-                    buf = "mige"; append = strlen(buf);
-                    memcpy(t + pos, buf, append);
-                    pos += append;
-                    putUSBUSART(t, pos);
-                    break;
-            }
-        }
-    }
+ outer:
+    // 実際に送る
     CDCTxService();
 }
