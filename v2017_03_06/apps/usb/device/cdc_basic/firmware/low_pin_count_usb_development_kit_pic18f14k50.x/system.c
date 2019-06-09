@@ -82,17 +82,17 @@ void SYSTEM_Initialize( SYSTEM_STATE state )
 }
 			
 #if defined(__XC8)
-void interrupt SYS_InterruptHigh(void)
+void interrupt high_priority SYS_InterruptHigh(void)
+{
+    #if defined(USB_INTERRUPT)
+        USBDeviceTasks();
+    #endif
+}
+void interrupt low_priority SYS_InterruptLow(void)
 {
     // タイマー割込みならば
     if(INTCONbits.T0IF) {
         meter_do_pulse();
-    }
-    // それ以外はUSB割込み扱い
-    else {
-    #if defined(USB_INTERRUPT)
-        USBDeviceTasks();
-    #endif
     }
 }
 #else

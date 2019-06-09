@@ -30,9 +30,12 @@ please contact mla_licensing@microchip.com
 #include "app_device_cdc_basic.h"
 #include "usb_config.h"
 #include "my_util.h"
+#include "meter.h"
 
 uint8_t storeBuffer[64];
 int storeBufferPos = 0;
+static long skipCycle = 30;
+static long currentCycle;
 /*********************************************************************
 * Function: void APP_DeviceCDCBasicDemoInitialize(void);
 *
@@ -76,6 +79,7 @@ void APP_DeviceCDCBasicDemoTasks()
     
     static char writeBuf[BUF_SIZE];
     static int writeBufPos;
+    // 1byteずつ処理する。
     for (int i=0; i< numBytes; i++) {
         char c = readBuf[i];
         switch(c) {
@@ -87,8 +91,14 @@ void APP_DeviceCDCBasicDemoTasks()
             default:
                 writeBuf[writeBufPos++] = readBuf[i];
                 break;
-        }        
+        }
     }
+
+    if (currentCycle > skipCycle) {
+        meter_do_pulse();
+        currentCycle = 0;
+    }
+    currentCycle++;
  outer:
     // 実際に送る
     CDCTxService();
