@@ -13,8 +13,9 @@ extern "C" {
 #endif
 
     void meter_enable();
-    void meter_set_freq(int hz);
+    void meter_set_freq(int);
     void meter_do_pulse();
+    void meter_set_cpuusage(int);
 
 
 #ifdef	__cplusplus

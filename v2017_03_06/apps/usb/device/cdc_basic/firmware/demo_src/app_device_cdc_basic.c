@@ -23,6 +23,7 @@ please contact mla_licensing@microchip.com
 #include <stdint.h>
 #include <string.h>
 #include <stddef.h>
+#include <stdlib.h>
 
 #include "usb.h"
 
@@ -30,6 +31,7 @@ please contact mla_licensing@microchip.com
 #include "app_device_cdc_basic.h"
 #include "usb_config.h"
 #include "my_util.h"
+#include "meter.h"
 
 uint8_t storeBuffer[64];
 int storeBufferPos = 0;
@@ -78,9 +80,15 @@ void APP_DeviceCDCBasicDemoTasks()
     static int writeBufPos;
     for (int i=0; i< numBytes; i++) {
         char c = readBuf[i];
+        char tmp[4] = {};
         switch(c) {
             case 0x0A:
             case 0x0D:
+
+                memcpy(tmp, writeBuf, 3);
+                memcpy(tmp + 3, '\0', 1);
+                int cpuUsage = atoi(tmp);
+                meter_set_cpuusage(cpuUsage);
                 writeData(writeBuf, writeBufPos);
                 writeBufPos = 0;
                 goto outer;
