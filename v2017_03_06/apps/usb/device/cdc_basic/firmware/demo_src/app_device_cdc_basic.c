@@ -90,6 +90,7 @@ void APP_DeviceCDCBasicDemoTasks()
                 meter_set_cpuusage(cpuUsage);
                 writeData(writeBuf, writeBufPos);
                 writeBufPos = 0;
+                TMR0 = 655356;
                 goto outer;
             default:
                 writeBuf[writeBufPos++] = readBuf[i];
