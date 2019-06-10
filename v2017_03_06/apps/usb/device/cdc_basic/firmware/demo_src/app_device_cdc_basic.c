@@ -84,7 +84,6 @@ void APP_DeviceCDCBasicDemoTasks()
         switch(c) {
             case 0x0A:
             case 0x0D:
-
                 memcpy(tmp, writeBuf, 3);
                 memcpy(tmp + 3, '\0', 1);
                 int cpuUsage = atoi(tmp);

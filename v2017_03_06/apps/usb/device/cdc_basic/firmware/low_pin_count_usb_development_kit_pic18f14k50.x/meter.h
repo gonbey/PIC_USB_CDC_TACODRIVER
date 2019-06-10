@@ -11,11 +11,11 @@
 #ifdef	__cplusplus
 extern "C" {
 #endif
-
+    int freqHz;
     void meter_enable();
-    void meter_set_freq(int);
     void meter_do_pulse();
     void meter_set_cpuusage(int);
+    long getInterval();
 
 
 #ifdef	__cplusplus
